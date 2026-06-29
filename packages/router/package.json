@@ -1,0 +1,39 @@
+{
+  "name": "@devjs/router",
+  "version": "0.0.0",
+  "description": "Filesystem route discovery and route contracts for dev.js.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "test": "vitest run src",
+    "test:unit": "vitest run src",
+    "bench": "tsx bench/router.bench.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@devjs/project": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "rimraf": "latest",
+    "tinybench": "latest",
+    "tsup": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

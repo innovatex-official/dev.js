@@ -1,0 +1,29 @@
+{
+  "name": "hello-devjs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "devjs build",
+    "dev": "devjs dev",
+    "doctor": "devjs doctor",
+    "doctor:json": "devjs doctor --json",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@devjs/build": "workspace:*",
+    "@devjs/cli": "workspace:*",
+    "@devjs/config": "workspace:*",
+    "@devjs/core": "workspace:*",
+    "@devjs/plugin": "workspace:*",
+    "@devjs/project": "workspace:*",
+    "@devjs/router": "workspace:*",
+    "@devjs/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "dev.js",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Experimental TypeScript developer-platform prototype from the InnovateX CS lab community.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innovatex-official/dev.js.git"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "clean": "turbo run clean && rimraf node_modules",
+    "dev": "turbo run dev --parallel",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "starter:doctor": "pnpm --filter hello-devjs run doctor",
+    "starter:build": "pnpm --filter hello-devjs run build",
+    "starter:dev": "pnpm --filter hello-devjs run dev",
+    "starter:start": "pnpm --filter hello-devjs start",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:e2e": "vitest run tests/e2e",
+    "bench": "turbo run bench",
+    "typecheck": "turbo run typecheck"
+  },
+  "dependencies": {
+    "@devjs/config": "workspace:*",
+    "@devjs/plugin": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "latest",
+    "@types/node": "latest",
+    "rimraf": "latest",
+    "tinybench": "latest",
+    "tsup": "latest",
+    "tsx": "latest",
+    "turbo": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

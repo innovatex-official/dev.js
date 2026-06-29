@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+coverage/
+.turbo/
+.vitest/
+
+*.log
+*.tsbuildinfo
+.devjs-build

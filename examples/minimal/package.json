@@ -1,0 +1,20 @@
+{
+  "name": "devjs-minimal-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "doctor": "devjs doctor",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@devjs/cli": "workspace:*",
+    "@devjs/config": "workspace:*",
+    "@devjs/core": "workspace:*",
+    "@devjs/plugin": "workspace:*",
+    "@devjs/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}
