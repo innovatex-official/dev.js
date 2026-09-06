@@ -40,17 +40,22 @@ dev.js is an InnovateX CS lab experiment. The roadmap is intentionally practical
 - Error boundaries and `@devjs/ui/testing` utilities.
 - `devjs init` project scaffolding.
 
+## Done: Advanced Runtime
+
+- Module-level HMR with client remount via SSE `hmr` events.
+- Suspense, `lazy()`, `startTransition`, and `useTransition`.
+- Full `useContext` Provider tree with nested values.
+- Deployment adapters via `@devjs/deploy` and `devjs deploy vercel|netlify`.
+- npm publish metadata for public packages (`@devjs/ui`, `@devjs/deploy`, and related packages).
+
 ## Next: Better Developer Experience
 
 - Add clearer error pages for config and route failures.
-- Add `devjs init` for creating new starter projects.
-- Add route params such as `/posts/[slug]`.
-- Add static asset serving from `public`.
-- Add a small client reload runtime.
+- Add richer dev overlay for route and build diagnostics.
+- Add plugin examples beyond the core contracts.
 
 ## Later: Framework Research
 
 - Explore a compiler or bundler integration.
-- Explore HMR.
-- Explore deployment output formats.
+- Explore concurrent rendering scheduling.
 - Explore package graph dependency edges.

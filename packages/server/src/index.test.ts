@@ -12,6 +12,7 @@ describe("renderDocument", () => {
     expect(html).toContain("<main>Hello</main>");
     expect(html).toContain("INFO DEVJS_PROJECT_READY");
     expect(html).toContain("/__devjs/events");
+    expect(html).toContain('addEventListener("hmr"');
   });
 
   it("escapes document title", () => {

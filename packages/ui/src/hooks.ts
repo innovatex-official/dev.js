@@ -1,3 +1,4 @@
+import { readContextValue } from "./context.js";
 import {
   type ComponentInstance,
   type DevContext,
@@ -122,15 +123,8 @@ export function useCallback<T extends (...args: never[]) => unknown>(
   return useMemo(() => callback, deps);
 }
 
-export function createContext<T>(defaultValue: T): DevContext<T> {
-  return Object.freeze({
-    id: Symbol("devjs.context"),
-    defaultValue,
-  });
-}
-
 export function useContext<T>(context: DevContext<T>): T {
-  return readHook(() => context.defaultValue);
+  return readHook(() => readContextValue(context));
 }
 
 export function depsEqual(

@@ -27,7 +27,8 @@
     "test:unit": "turbo run test:unit",
     "test:e2e": "vitest run tests/e2e",
     "bench": "turbo run bench",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "publish:packages": "pnpm build && pnpm -r --filter '@devjs/*' publish --access public --no-git-checks"
   },
   "dependencies": {
     "@devjs/config": "workspace:*",

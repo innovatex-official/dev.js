@@ -1,6 +1,6 @@
 {
   "name": "@devjs/project",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Project loading, workspace discovery, and diagnostics for dev.js.",
   "type": "module",
   "exports": {
@@ -37,5 +37,14 @@
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innovatex-official/dev.js.git",
+    "directory": "packages/project"
   }
 }

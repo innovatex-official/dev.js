@@ -1,6 +1,6 @@
 {
   "name": "@devjs/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Command-line interface for dev.js.",
   "type": "module",
   "bin": {
@@ -29,6 +29,7 @@
   "dependencies": {
     "@devjs/build": "workspace:*",
     "@devjs/core": "workspace:*",
+    "@devjs/deploy": "workspace:*",
     "@devjs/project": "workspace:*",
     "@devjs/server": "workspace:*"
   },
@@ -40,5 +41,14 @@
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innovatex-official/dev.js.git",
+    "directory": "packages/cli"
   }
 }

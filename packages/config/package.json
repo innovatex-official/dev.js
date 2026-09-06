@@ -1,6 +1,6 @@
 {
   "name": "@devjs/config",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Configuration schema and helpers for dev.js projects.",
   "type": "module",
   "exports": {
@@ -34,5 +34,14 @@
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innovatex-official/dev.js.git",
+    "directory": "packages/config"
   }
 }

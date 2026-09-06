@@ -1,5 +1,7 @@
+import { isContextProvider, leaveContext } from "./context.js";
 import { h } from "./h.js";
 import { resetHooks } from "./hooks.js";
+import { isSuspendPromise, isSuspenseComponent } from "./suspense.js";
 import {
   type ComponentInstance,
   type DevComponent,
@@ -69,6 +71,16 @@ function renderNode(node: DevNode): string {
   }
 
   if (isComponent(node.type)) {
+    if (isSuspenseComponent(node.type)) {
+      try {
+        return renderNode(node.props.children as DevNode);
+      } catch (value) {
+        if (isSuspendPromise(value)) {
+          return renderNode(node.props.fallback as DevNode);
+        }
+        throw value;
+      }
+    }
     return renderComponent(node.type, node.props, null);
   }
 
@@ -107,11 +119,31 @@ function renderComponent(
   let rendered: DevNode;
   try {
     rendered = component(props);
+  } catch (value) {
+    internals.currentInstance = previous;
+    if (isSuspendPromise(value)) {
+      throw value;
+    }
+    throw value;
   } finally {
     internals.currentInstance = previous;
   }
 
-  return renderNode(rendered);
+  try {
+    const html = renderNode(rendered);
+    if (isContextProvider(component)) {
+      leaveContext();
+    }
+    return html;
+  } catch (value) {
+    if (isContextProvider(component)) {
+      leaveContext();
+    }
+    if (isSuspendPromise(value)) {
+      throw value;
+    }
+    throw value;
+  }
 }
 
 function renderChildren(children: DevNode): string {

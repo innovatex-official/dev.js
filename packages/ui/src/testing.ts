@@ -1,6 +1,6 @@
+import { h } from "./h.js";
 import { renderToString } from "./ssr.js";
 import type { DevComponent, DevNode, DevProps } from "./types.js";
-import { h } from "./h.js";
 
 export function render(component: DevComponent<DevProps>, props: DevProps = {}): string {
   return renderToString(h(component, props));

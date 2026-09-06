@@ -1,3 +1,4 @@
+import { resetContextStack } from "./context.js";
 import { h } from "./h.js";
 import { createInstance, hydrateDom, mount, patch, setEventRoot } from "./reconciler.js";
 import { Link, RouterProvider, usePathname, useRouter } from "./router.js";
@@ -15,6 +16,7 @@ let rootVNode: DevVNode | null = null;
 let rootInstance: ComponentInstance | null = null;
 
 export function render(vnode: DevNode, container: HTMLElement): void {
+  resetContextStack();
   rootContainer = container;
   rootVNode = isVNode(vnode) ? vnode : null;
   setEventRoot(container);
@@ -75,4 +77,5 @@ export function hydrateApp(component: DevComponent, container: HTMLElement): voi
   hydrate(h(component, {}), container);
 }
 
+export { lazy, Suspense, startTransition, useTransition } from "./suspense.js";
 export { Link, RouterProvider, usePathname, useRouter };

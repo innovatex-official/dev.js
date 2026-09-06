@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildProject, formatBuildSummary } from "@devjs/build";
+import { deployProject, formatDeploySummary } from "@devjs/deploy";
 import {
   formatDiagnostic,
   hasDiagnosticErrors,
@@ -38,6 +39,8 @@ export async function runCli(
       return runDev(argv, runtime);
     case "init":
       return runInit(argv, runtime);
+    case "deploy":
+      return runDeploy(argv, runtime);
     case "help":
     case "--help":
     case "-h":
@@ -93,6 +96,28 @@ async function runInit(argv: readonly string[], runtime: CliRuntime): Promise<Cl
   }
 }
 
+async function runDeploy(argv: readonly string[], runtime: CliRuntime): Promise<CliResult> {
+  const target = argv[3];
+  if (target !== "vercel" && target !== "netlify") {
+    return {
+      exitCode: 1,
+      stdout: "",
+      stderr: "Usage: devjs deploy <vercel|netlify>",
+    };
+  }
+
+  try {
+    const result = await deployProject({ cwd: runtime.cwd, target });
+    return ok(formatDeploySummary(result));
+  } catch (error) {
+    return {
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 async function runDev(argv: readonly string[], runtime: CliRuntime): Promise<CliResult> {
   const port = parsePort(argv) ?? 3000;
   const server = await startDevServer({
@@ -116,6 +141,8 @@ Usage:
   devjs dev --port 4000 Start the development server on a custom port
   devjs build           Build production HTML output
   devjs init [name]     Create a new dev.js application
+  devjs deploy vercel   Write Vercel deployment config
+  devjs deploy netlify  Write Netlify deployment config
   devjs doctor          Validate the current project environment
   devjs doctor --json   Print diagnostics as JSON
   devjs version         Print the CLI version

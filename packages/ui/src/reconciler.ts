@@ -1,5 +1,7 @@
+import { isContextProvider, leaveContext } from "./context.js";
 import { h } from "./h.js";
 import { resetHooks, runEffects } from "./hooks.js";
+import { isSuspendPromise, isSuspenseComponent, scheduleSuspendRerender } from "./suspense.js";
 import {
   type ComponentInstance,
   type DevComponent,
@@ -99,6 +101,10 @@ function mountComponent(
   props: DevVNode["props"],
   container: HTMLElement,
 ): Node | null {
+  if (isSuspenseComponent(component)) {
+    return mountSuspense(instance, props, container);
+  }
+
   const internals = getInternals();
   const previous = internals.currentInstance;
   internals.currentInstance = instance;
@@ -107,13 +113,59 @@ function mountComponent(
   let rendered: DevNode;
   try {
     rendered = component(props);
+    instance.dom = mountWithSuspend(rendered, container, instance);
+  } catch (value) {
+    internals.currentInstance = previous;
+    if (isSuspendPromise(value)) {
+      scheduleSuspendRerender(value);
+      throw value;
+    }
+    throw value;
   } finally {
     internals.currentInstance = previous;
   }
 
-  instance.dom = mount(rendered, container, instance);
+  if (isContextProvider(component)) {
+    leaveContext();
+  }
   flushEffects(instance);
   return instance.dom;
+}
+
+function mountSuspense(
+  instance: ComponentInstance,
+  props: DevVNode["props"],
+  container: HTMLElement,
+): Node | null {
+  resetHooks(instance);
+  try {
+    instance.dom = mountWithSuspend((props.children as DevNode) ?? null, container, instance);
+  } catch (value) {
+    if (isSuspendPromise(value)) {
+      scheduleSuspendRerender(value);
+      instance.dom = mount((props.fallback as DevNode) ?? null, container, instance);
+    } else {
+      throw value;
+    }
+  }
+  flushEffects(instance);
+  return instance.dom;
+}
+
+function mountWithSuspend(
+  vnode: DevNode,
+  container: HTMLElement,
+  parent: ComponentInstance | null,
+): Node | null {
+  try {
+    return mount(vnode, container, parent);
+  } catch (value) {
+    if (isSuspendPromise(value)) {
+      scheduleSuspendRerender(value);
+      throw value;
+    }
+    throw value;
+  }
 }
 
 export function patch(
@@ -218,27 +270,59 @@ export function patch(
 }
 
 function updateComponent(instance: ComponentInstance, props: DevVNode["props"]): ComponentInstance {
+  const component = (instance.vnode as DevVNode).type as DevComponent;
+
+  if (isSuspenseComponent(component)) {
+    const container = instance.dom?.parentNode as HTMLElement | null;
+    if (!container) {
+      return instance;
+    }
+    if (instance.dom) {
+      instance.dom.parentNode?.removeChild(instance.dom);
+      instance.dom = null;
+    }
+    mountSuspense(instance, props, container);
+    return instance;
+  }
+
   const internals = getInternals();
   const previous = internals.currentInstance;
   internals.currentInstance = instance;
   resetHooks(instance);
 
-  const component = (instance.vnode as DevVNode).type as DevComponent;
   let rendered: DevNode;
   try {
     rendered = component(props);
+  } catch (value) {
+    internals.currentInstance = previous;
+    if (isSuspendPromise(value)) {
+      scheduleSuspendRerender(value);
+      throw value;
+    }
+    throw value;
   } finally {
     internals.currentInstance = previous;
   }
 
   if (instance.dom && instance.dom.parentNode) {
     const parentElement = instance.dom.parentNode as HTMLElement;
-    const newDom = patch(parentElement, rendered, instance.childInstances[0] ?? null, instance);
-    if (newDom?.dom) {
-      instance.dom = newDom.dom;
+    try {
+      const newDom = patch(parentElement, rendered, instance.childInstances[0] ?? null, instance);
+      if (newDom?.dom) {
+        instance.dom = newDom.dom;
+      }
+    } catch (value) {
+      if (isSuspendPromise(value)) {
+        scheduleSuspendRerender(value);
+        throw value;
+      }
+      throw value;
     }
   }
 
+  if (isContextProvider(component)) {
+    leaveContext();
+  }
   flushEffects(instance);
   return instance;
 }

@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderHelp, runCli } from "./index.js";
@@ -72,6 +72,26 @@ describe("runCli", () => {
     expect(result.stderr).toContain("Unknown command: unknown");
   });
 
+  it("prepares vercel deployment config", async () => {
+    const target = resolve(repoRoot, `tmp-deploy-${crypto.randomUUID()}`);
+    await mkdir(target, { recursive: true });
+    const result = await runCli(["node", "devjs", "deploy", "vercel"], {
+      cwd: target,
+      env: { NODE_ENV: "production" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("vercel");
+    await rm(target, { force: true, recursive: true });
+  });
+
+  it("rejects invalid deploy targets", async () => {
+    const result = await runCli(["node", "devjs", "deploy", "aws"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Usage: devjs deploy");
+  });
+
   it("scaffolds a new project", async () => {
     const target = resolve(repoRoot, `tmp-init-${crypto.randomUUID()}`);
     const result = await runCli(["node", "devjs", "init", "demo-app"], {
@@ -91,5 +111,6 @@ describe("renderHelp", () => {
     expect(renderHelp()).toContain("devjs doctor");
     expect(renderHelp()).toContain("devjs build");
     expect(renderHelp()).toContain("devjs init");
+    expect(renderHelp()).toContain("devjs deploy");
   });
 });

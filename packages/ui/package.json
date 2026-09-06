@@ -1,8 +1,25 @@
 {
   "name": "@devjs/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "React-alternative UI library for dev.js — components, hooks, SSR, and client hydration.",
   "type": "module",
+  "keywords": [
+    "devjs",
+    "react",
+    "ui",
+    "ssr",
+    "hydration",
+    "jsx"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innovatex-official/dev.js.git",
+    "directory": "packages/ui"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -32,6 +49,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly",
+    "prepublishOnly": "pnpm run build",
     "clean": "rimraf dist *.tsbuildinfo",
     "dev": "tsup --watch",
     "test": "vitest run src",

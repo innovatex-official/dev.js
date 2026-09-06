@@ -1,10 +1,10 @@
 import { renderToString } from "./ssr.js";
 import type { DevNode } from "./types.js";
 
-export { Children, cloneElement, createElement, Fragment, h, jsx, jsxDEV, jsxs } from "./h.js";
+export { type ContextValue, createContext } from "./context.js";
 export { ErrorBoundary, withErrorBoundary } from "./error-boundary.js";
+export { Children, cloneElement, createElement, Fragment, h, jsx, jsxDEV, jsxs } from "./h.js";
 export {
-  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -14,6 +14,7 @@ export {
   useState,
 } from "./hooks.js";
 export { createApp, escapeHtml, renderToString } from "./ssr.js";
+export { lazy, Suspense, startTransition, useTransition } from "./suspense.js";
 export type {
   DevComponent,
   DevContext,

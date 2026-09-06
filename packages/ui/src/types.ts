@@ -52,6 +52,8 @@ export type DevInternals = {
   rootInstance: ComponentInstance | null;
   pendingEffects: ComponentInstance[];
   isHydrating: boolean;
+  contextStack: Map<symbol, unknown>[];
+  transitionPending: boolean;
 };
 
 export function getInternals(): DevInternals {
@@ -62,6 +64,8 @@ export function getInternals(): DevInternals {
       rootInstance: null,
       pendingEffects: [],
       isHydrating: false,
+      contextStack: [new Map()],
+      transitionPending: false,
     } satisfies DevInternals;
   }
   return globalScope[DEV_INTERNALS] as DevInternals;

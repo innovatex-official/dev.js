@@ -47,13 +47,27 @@ export async function startDevServer(options: DevServerOptions): Promise<DevServ
   let project = await loadProject({ cwd: options.cwd, mode: "development" });
   let manifest = await discoverRoutes(project.root);
   const clients = new Set<SseClient>();
+  let reloadGeneration = 0;
   const watcher =
     options.watch === false
       ? undefined
-      : watch(project.root, { recursive: true }, async () => {
+      : watch(project.root, { recursive: true }, async (_eventType, filename) => {
           project = await loadProject({ cwd: options.cwd, mode: "development" });
           manifest = await discoverRoutes(project.root);
-          broadcastReload(clients);
+          reloadGeneration += 1;
+
+          const normalized = filename?.replaceAll("\\", "/") ?? "";
+          if (normalized.endsWith(".css")) {
+            broadcastEvent(clients, "css", { generation: reloadGeneration });
+            return;
+          }
+
+          if (normalized.includes("app/routes/") || normalized.includes("app/components/")) {
+            broadcastEvent(clients, "hmr", { generation: reloadGeneration });
+            return;
+          }
+
+          broadcastEvent(clients, "reload", { generation: reloadGeneration });
         });
 
   const server = createServer(async (request, response) => {
@@ -127,7 +141,9 @@ export function renderDocument(input: {
   body: string;
   diagnostics: readonly string[];
   clientScript?: string;
+  clientPath?: string;
 }): string {
+  const clientAttr = input.clientPath ? ` data-devjs-client="${escapeHtml(input.clientPath)}"` : "";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -142,12 +158,9 @@ export function renderDocument(input: {
     </style>
   </head>
   <body>
-    <div id="root">${input.body}</div>
+    <div id="root"${clientAttr}>${input.body}</div>
     ${renderOverlay(input.diagnostics)}
-    <script type="module">
-      const events = new EventSource("/__devjs/events");
-      events.addEventListener("reload", () => location.reload());
-    </script>
+    <script type="module">${createHmrRuntimeScript(input.clientPath)}</script>
     ${input.clientScript ? `<script type="module">${input.clientScript}</script>` : ""}
   </body>
 </html>`;
@@ -192,9 +205,8 @@ async function renderRequest(
     }
 
     const body = resolveRenderOutput(await module.render({ project, params: matched.params, url }));
-    const clientScript = hasClientComponent(module)
-      ? `import "${routeClientPath(matched.route.path)}";`
-      : undefined;
+    const clientPath = hasClientComponent(module) ? routeClientPath(matched.route.path) : undefined;
+    const clientScript = clientPath ? `import "${clientPath}";` : undefined;
 
     sendHtml(
       response,
@@ -204,6 +216,7 @@ async function renderRequest(
         body,
         diagnostics: project.diagnostics.map(formatDiagnostic),
         ...(clientScript ? { clientScript } : {}),
+        ...(clientPath ? { clientPath } : {}),
       }),
     );
   } catch (error) {
@@ -259,10 +272,55 @@ function openEventStream(response: ServerResponse, clients: Set<SseClient>): voi
   response.on("close", () => clients.delete(response));
 }
 
-function broadcastReload(clients: Set<SseClient>): void {
+function broadcastEvent(
+  clients: Set<SseClient>,
+  event: "reload" | "hmr" | "css",
+  data: Record<string, unknown>,
+): void {
+  const payload = JSON.stringify(data);
   for (const client of clients) {
-    client.write("event: reload\ndata: {}\n\n");
+    client.write(`event: ${event}\ndata: ${payload}\n\n`);
   }
+}
+
+function createHmrRuntimeScript(clientPath?: string): string {
+  const clientLiteral = clientPath
+    ? JSON.stringify(clientPath)
+    : "document.getElementById('root')?.dataset.devjsClient ?? null";
+  return `
+const events = new EventSource("/__devjs/events");
+let remount = globalThis.__devjsRemount;
+events.addEventListener("reload", () => location.reload());
+events.addEventListener("hmr", async () => {
+  if (typeof remount === "function") {
+    remount();
+    return;
+  }
+  const clientPath = ${clientLiteral};
+  if (!clientPath) {
+    location.reload();
+    return;
+  }
+  try {
+    const module = await import(clientPath + "?t=" + Date.now());
+    remount = module.remount ?? globalThis.__devjsRemount;
+    if (typeof remount === "function") {
+      remount();
+      return;
+    }
+  } catch {
+    location.reload();
+  }
+});
+events.addEventListener("css", () => {
+  for (const sheet of document.querySelectorAll('link[rel="stylesheet"]')) {
+    const href = sheet.getAttribute("href");
+    if (href) {
+      sheet.setAttribute("href", href.split("?")[0] + "?t=" + Date.now());
+    }
+  }
+});
+`.trim();
 }
 
 function sendJson(response: ServerResponse, data: unknown): void {
@@ -329,11 +387,17 @@ export async function bundleRouteClient(routeFilePath: string): Promise<string> 
   const entry = `
     import { hydrateApp } from "@devjs/ui/client";
     import { component } from ${JSON.stringify(routeFilePath)};
-    const root = document.getElementById("root");
-    if (!root) {
-      throw new Error("Missing #root container for dev.js hydration.");
+
+    export function remount() {
+      const root = document.getElementById("root");
+      if (!root) {
+        throw new Error("Missing #root container for dev.js hydration.");
+      }
+      hydrateApp(component, root);
     }
-    hydrateApp(component, root);
+
+    globalThis.__devjsRemount = remount;
+    remount();
   `;
 
   const result = await esbuild.build({
