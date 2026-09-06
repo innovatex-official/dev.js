@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "devjs build",
-    "dev": "devjs dev",
-    "doctor": "devjs doctor",
-    "doctor:json": "devjs doctor --json",
+    "build": "node ../../packages/cli/dist/index.js build",
+    "dev": "node ../../packages/cli/dist/index.js dev",
+    "doctor": "node ../../packages/cli/dist/index.js doctor",
+    "doctor:json": "node ../../packages/cli/dist/index.js doctor --json",
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -19,7 +19,8 @@
     "@devjs/plugin": "workspace:*",
     "@devjs/project": "workspace:*",
     "@devjs/router": "workspace:*",
-    "@devjs/runtime": "workspace:*"
+    "@devjs/runtime": "workspace:*",
+    "@devjs/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "latest",

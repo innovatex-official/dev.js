@@ -1,6 +1,8 @@
 import { watch } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   formatDiagnostic,
@@ -8,7 +10,20 @@ import {
   type LoadedProject,
   loadProject,
 } from "@devjs/project";
-import { discoverRoutes, isRouteModule, matchRoute, type RouteManifest } from "@devjs/router";
+import {
+  discoverRoutes,
+  hasClientComponent,
+  isRouteModule,
+  matchRoute,
+  type RouteManifest,
+} from "@devjs/router";
+import { resolveRenderOutput } from "@devjs/ui";
+import * as esbuild from "esbuild";
+
+const require = createRequire(import.meta.url);
+const uiEntry = require.resolve("@devjs/ui");
+const uiClientEntry = require.resolve("@devjs/ui/client");
+const uiJsxEntry = require.resolve("@devjs/ui/jsx-runtime");
 
 export type DevServerOptions = Readonly<{
   cwd: string;
@@ -57,6 +72,30 @@ export async function startDevServer(options: DevServerOptions): Promise<DevServ
       return;
     }
 
+    if (url.pathname === "/__devjs/ui-client.js") {
+      const bundle = await readUiClientBundle();
+      sendJavaScript(response, bundle);
+      return;
+    }
+
+    if (url.pathname.startsWith("/__devjs/client/") && url.pathname.endsWith(".js")) {
+      const route = manifest.routes.find((entry) => routeClientPath(entry.path) === url.pathname);
+      if (!route) {
+        response.writeHead(404);
+        response.end("Route client bundle not found.");
+        return;
+      }
+
+      try {
+        const bundle = await bundleRouteClient(route.filePath);
+        sendJavaScript(response, bundle);
+      } catch (error) {
+        response.writeHead(500);
+        response.end(error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
     await renderRequest(response, project, manifest, url);
   });
 
@@ -83,6 +122,7 @@ export function renderDocument(input: {
   title: string;
   body: string;
   diagnostics: readonly string[];
+  clientScript?: string;
 }): string {
   return `<!doctype html>
 <html lang="en">
@@ -104,6 +144,7 @@ export function renderDocument(input: {
       const events = new EventSource("/__devjs/events");
       events.addEventListener("reload", () => location.reload());
     </script>
+    ${input.clientScript ? `<script type="module">${input.clientScript}</script>` : ""}
   </body>
 </html>`;
 }
@@ -135,9 +176,7 @@ async function renderRequest(
   }
 
   try {
-    const module = (await import(
-      `${pathToFileURL(route.filePath).href}?t=${Date.now()}`
-    )) as unknown;
+    const module = (await loadRouteModule(route.filePath)) as unknown;
 
     if (!isRouteModule(module)) {
       sendHtml(
@@ -148,7 +187,11 @@ async function renderRequest(
       return;
     }
 
-    const body = await module.render({ project, params: {}, url });
+    const body = resolveRenderOutput(await module.render({ project, params: {}, url }));
+    const clientScript = hasClientComponent(module)
+      ? `import "${routeClientPath(route.path)}";`
+      : undefined;
+
     sendHtml(
       response,
       200,
@@ -156,6 +199,7 @@ async function renderRequest(
         title: project.kernel.plan.project,
         body,
         diagnostics: project.diagnostics.map(formatDiagnostic),
+        ...(clientScript ? { clientScript } : {}),
       }),
     );
   } catch (error) {
@@ -222,6 +266,11 @@ function sendJson(response: ServerResponse, data: unknown): void {
   response.end(JSON.stringify(data, null, 2));
 }
 
+function sendJavaScript(response: ServerResponse, source: string): void {
+  response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+  response.end(source);
+}
+
 function sendHtml(response: ServerResponse, statusCode: number, html: string): void {
   response.writeHead(statusCode, { "Content-Type": "text/html; charset=utf-8" });
   response.end(html);
@@ -233,4 +282,82 @@ function escapeHtml(value: string): string {
 
 export function defaultPublicDirectory(root: string): string {
   return join(root, "public");
+}
+
+export async function loadRouteModule(filePath: string): Promise<unknown> {
+  const extension = filePath.split(".").pop();
+
+  if (extension === "ts" || extension === "tsx") {
+    const result = await esbuild.build({
+      entryPoints: [filePath],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "node",
+      target: "node20",
+      jsx: "automatic",
+      jsxImportSource: "@devjs/ui",
+      alias: {
+        "@devjs/ui": uiEntry,
+        "@devjs/ui/client": uiClientEntry,
+        "@devjs/ui/jsx-runtime": uiJsxEntry,
+      },
+      packages: "external",
+    });
+
+    const code = result.outputFiles[0]?.text;
+    if (!code) {
+      throw new Error(`Failed to transpile route module: ${filePath}`);
+    }
+
+    const url = `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
+    return import(url);
+  }
+
+  return import(`${pathToFileURL(filePath).href}?t=${Date.now()}`);
+}
+
+async function readUiClientBundle(): Promise<string> {
+  return readFile(uiClientEntry, "utf8");
+}
+
+async function bundleRouteClient(routeFilePath: string): Promise<string> {
+  const entry = `
+    import { hydrateApp } from "@devjs/ui/client";
+    import { component } from ${JSON.stringify(pathToFileURL(routeFilePath).href)};
+    const root = document.getElementById("root");
+    if (!root) {
+      throw new Error("Missing #root container for dev.js hydration.");
+    }
+    hydrateApp(component, root);
+  `;
+
+  const result = await esbuild.build({
+    stdin: {
+      contents: entry,
+      loader: "ts",
+      resolveDir: dirname(routeFilePath),
+    },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "browser",
+    target: "es2020",
+    alias: {
+      "@devjs/ui/client": uiClientEntry,
+      "@devjs/ui": uiEntry,
+    },
+  });
+
+  const output = result.outputFiles[0]?.text;
+  if (!output) {
+    throw new Error(`Failed to bundle client route: ${routeFilePath}`);
+  }
+
+  return output;
+}
+
+function routeClientPath(routePath: string): string {
+  const normalized = routePath === "/" ? "index" : routePath.slice(1).replaceAll("/", "-");
+  return `/__devjs/client/${normalized}.js`;
 }

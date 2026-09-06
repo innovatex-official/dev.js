@@ -19,6 +19,8 @@ dev.js currently implements a small end-to-end framework slice for learning and 
       |
 @devjs/router
       |
+@devjs/ui
+      |
 @devjs/server
       |
 @devjs/build
@@ -34,14 +36,15 @@ dev.js currently implements a small end-to-end framework slice for learning and 
 - `@devjs/core` composes platform primitives into a kernel.
 - `@devjs/project` owns filesystem-aware loading, workspace discovery, and diagnostics.
 - `@devjs/router` discovers route files and defines the route module contract.
-- `@devjs/server` serves route modules over HTTP and exposes diagnostics.
+- `@devjs/ui` provides the component model, hooks, SSR, and client hydration runtime.
+- `@devjs/server` serves route modules over HTTP, bundles client code, and exposes diagnostics.
 - `@devjs/build` writes static HTML route output and a build manifest.
 - `@devjs/cli` owns terminal commands and human-facing output.
 
 ## Data Flow
 
 ```text
-dev.config.ts -> normalized config -> runtime plan -> project diagnostics -> route discovery -> dev server or static build -> CLI output
+dev.config.ts -> normalized config -> runtime plan -> project diagnostics -> route discovery -> component SSR -> dev server or static build -> client hydration -> CLI output
 ```
 
 ## Performance Model

@@ -2,6 +2,7 @@ import type { Dirent } from "node:fs";
 import { readdir as readdirAsync } from "node:fs/promises";
 import { extname, join, relative, sep } from "node:path";
 import type { LoadedProject } from "@devjs/project";
+import type { DevComponent } from "@devjs/ui";
 
 export type RouteContext = Readonly<{
   project: LoadedProject;
@@ -9,8 +10,11 @@ export type RouteContext = Readonly<{
   url: URL;
 }>;
 
+export type RouteRenderResult = string | import("@devjs/ui").DevNode;
+
 export type RouteModule = Readonly<{
-  render: (context: RouteContext) => string | Promise<string>;
+  render: (context: RouteContext) => RouteRenderResult | Promise<RouteRenderResult>;
+  component?: DevComponent;
 }>;
 
 export type RouteDefinition = Readonly<{
@@ -63,6 +67,10 @@ export function isRouteModule(value: unknown): value is RouteModule {
     "render" in value &&
     typeof (value as { render: unknown }).render === "function"
   );
+}
+
+export function hasClientComponent(value: RouteModule): boolean {
+  return typeof value.component === "function";
 }
 
 async function readRouteFiles(directory: string): Promise<string[]> {

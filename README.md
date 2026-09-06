@@ -4,14 +4,16 @@ dev.js is an experimental TypeScript developer-platform prototype from InnovateX
 
 Repository: https://github.com/innovatex-official/dev.js
 
-This project was built for exploration and learning. It is not trying to replace production frameworks today, but it is structured with production-grade engineering habits: typed package boundaries, tests, benchmarks, docs, examples, and a working end-to-end app lifecycle.
+This project was built for exploration and learning. It includes a full-stack platform and a React-alternative UI library (`@devjs/ui`) with components, hooks, SSR, and client hydration.
 
 ## What Works
 
 - `devjs doctor` loads a project and reports diagnostics.
 - `devjs dev` starts a local HTTP development server.
 - `devjs build` writes static HTML output to `dist/devjs`.
-- Filesystem routes render browser pages from `app/routes`.
+- Filesystem routes render pages from `app/routes` using `@devjs/ui` components.
+- JSX/TSX route modules with `useState`, `useEffect`, and other hooks.
+- Server-side rendering via `renderToString` and client hydration for interactive routes.
 - The `hello-devjs` starter proves the end-to-end flow.
 
 ## Project Scope
@@ -23,11 +25,12 @@ dev.js currently supports a small but complete framework slice:
 - project diagnostics
 - workspace discovery
 - route discovery
-- development HTTP serving
+- component-based UI rendering (`@devjs/ui`)
+- development HTTP serving with client bundling
 - static HTML build output
 - CLI commands
 
-It does not yet include a compiler, HMR runtime, client router, database layer, auth layer, deployment adapters, or stable public API guarantees.
+It does not yet include a full compiler pipeline, HMR runtime, client router, database layer, auth layer, deployment adapters, or stable public API guarantees.
 
 ## Packages
 
@@ -37,6 +40,7 @@ It does not yet include a compiler, HMR runtime, client router, database layer, 
 - `@devjs/core`: platform kernel composition.
 - `@devjs/project`: project loading, workspace discovery, and diagnostics.
 - `@devjs/router`: filesystem route discovery and route contracts.
+- `@devjs/ui`: React-alternative UI library (components, hooks, SSR, hydration).
 - `@devjs/server`: development HTTP server with diagnostics and reload events.
 - `@devjs/build`: production HTML output and build manifest generation.
 - `@devjs/cli`: command-line interface.

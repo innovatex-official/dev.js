@@ -27,7 +27,8 @@
   "dependencies": {
     "@devjs/project": "workspace:*",
     "@devjs/router": "workspace:*",
-    "@devjs/server": "workspace:*"
+    "@devjs/server": "workspace:*",
+    "@devjs/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "latest",

@@ -23,6 +23,14 @@ dev.js is an InnovateX CS lab experiment. The roadmap is intentionally practical
 - Add static HTML production output.
 - Add `devjs dev` and `devjs build`.
 
+## Done: UI Library
+
+- Add `@devjs/ui` with components, hooks, fragments, and context.
+- Add server rendering via `renderToString`.
+- Add client rendering and hydration via `@devjs/ui/client`.
+- Add JSX/TSX support through `jsx-runtime`.
+- Integrate component routes with the dev server and static build.
+
 ## Next: Better Developer Experience
 
 - Add clearer error pages for config and route failures.

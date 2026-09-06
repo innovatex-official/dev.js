@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@devjs/project": "workspace:*"
+    "@devjs/project": "workspace:*",
+    "@devjs/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "latest",

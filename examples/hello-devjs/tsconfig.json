@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@devjs/ui",
     "types": ["node"]
   },
-  "include": ["app/**/*.ts", "dev.config.ts", "src/**/*.ts"]
+  "include": ["app/**/*.ts", "app/**/*.tsx", "dev.config.ts", "src/**/*.ts"]
 }

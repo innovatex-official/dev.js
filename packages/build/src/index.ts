@@ -1,9 +1,9 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { formatDiagnostic, hasDiagnosticErrors, loadProject } from "@devjs/project";
 import { discoverRoutes, isRouteModule } from "@devjs/router";
-import { renderDocument } from "@devjs/server";
+import { loadRouteModule, renderDocument } from "@devjs/server";
+import { resolveRenderOutput } from "@devjs/ui";
 
 export type BuildOptions = Readonly<{
   cwd: string;
@@ -39,9 +39,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   const outputs: BuildRouteOutput[] = [];
 
   for (const route of manifest.routes) {
-    const module = (await import(
-      `${pathToFileURL(route.filePath).href}?build=${Date.now()}`
-    )) as unknown;
+    const module = (await loadRouteModule(route.filePath)) as unknown;
 
     if (!isRouteModule(module)) {
       throw new Error(`Route module ${route.filePath} must export render().`);
@@ -49,11 +47,13 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
 
     const html = renderDocument({
       title: project.kernel.plan.project,
-      body: await module.render({
-        project,
-        params: {},
-        url: new URL(route.path, "https://devjs.local"),
-      }),
+      body: resolveRenderOutput(
+        await module.render({
+          project,
+          params: {},
+          url: new URL(route.path, "https://devjs.local"),
+        }),
+      ),
       diagnostics,
     });
     const outputPath = join(

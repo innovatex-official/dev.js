@@ -1,13 +1,23 @@
 {
-  "name": "@devjs/server",
+  "name": "@devjs/ui",
   "version": "0.0.0",
-  "description": "Development HTTP server for dev.js applications.",
+  "description": "React-alternative UI library for dev.js — components, hooks, SSR, and client hydration.",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js",
+      "default": "./dist/client.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "import": "./dist/jsx-runtime.js",
+      "default": "./dist/jsx-runtime.js"
     }
   },
   "files": [
@@ -16,22 +26,15 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup && tsc --emitDeclarationOnly",
     "clean": "rimraf dist *.tsbuildinfo",
-    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "dev": "tsup --watch",
     "test": "vitest run src",
     "test:unit": "vitest run src",
-    "bench": "tsx bench/server.bench.ts",
+    "bench": "tsx bench/ui.bench.ts",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@devjs/project": "workspace:*",
-    "@devjs/router": "workspace:*",
-    "@devjs/ui": "workspace:*",
-    "esbuild": "latest"
-  },
   "devDependencies": {
-    "@types/node": "latest",
     "rimraf": "latest",
     "tinybench": "latest",
     "tsup": "latest",
