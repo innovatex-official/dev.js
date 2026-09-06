@@ -12,3 +12,4 @@ coverage/
 *.log
 *.tsbuildinfo
 .devjs-build
+tmp-init-*/

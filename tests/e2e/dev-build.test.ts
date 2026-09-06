@@ -10,9 +10,21 @@ describe("dev and build workflow", () => {
   it("builds production route output", async () => {
     const result = await buildProject({ cwd: starterRoot });
     const html = await readFile(resolve(starterRoot, "dist/devjs/index.html"), "utf8");
+    const postHtml = await readFile(
+      resolve(starterRoot, "dist/devjs/posts/getting-started.html"),
+      "utf8",
+    );
+    const robots = await readFile(resolve(starterRoot, "dist/devjs/robots.txt"), "utf8");
 
-    expect(result.routes.map((route) => route.path)).toEqual(["/", "/about"]);
+    expect(result.routes.map((route) => route.path)).toEqual([
+      "/",
+      "/about",
+      "/posts/getting-started",
+      "/posts/architecture",
+    ]);
     expect(html).toContain("Build from one platform.");
+    expect(postHtml).toContain("Post: getting-started");
+    expect(robots).toContain("User-agent");
   });
 
   it("serves route output over HTTP", async () => {
@@ -23,11 +35,16 @@ describe("dev and build workflow", () => {
     });
 
     try {
-      const response = await fetch("http://127.0.0.1:3231/about");
-      const html = await response.text();
+      const about = await fetch("http://127.0.0.1:3231/about");
+      const post = await fetch("http://127.0.0.1:3231/posts/architecture");
+      const robots = await fetch("http://127.0.0.1:3231/robots.txt");
 
-      expect(response.status).toBe(200);
-      expect(html).toContain("About hello-devjs");
+      expect(about.status).toBe(200);
+      expect(await about.text()).toContain("About hello-devjs");
+      expect(post.status).toBe(200);
+      expect(await post.text()).toContain("Post: architecture");
+      expect(robots.status).toBe(200);
+      expect(await robots.text()).toContain("User-agent");
     } finally {
       await server.close();
     }

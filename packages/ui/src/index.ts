@@ -2,6 +2,7 @@ import { renderToString } from "./ssr.js";
 import type { DevNode } from "./types.js";
 
 export { Children, cloneElement, createElement, Fragment, h, jsx, jsxDEV, jsxs } from "./h.js";
+export { ErrorBoundary, withErrorBoundary } from "./error-boundary.js";
 export {
   createContext,
   useCallback,

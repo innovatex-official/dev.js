@@ -33,6 +33,7 @@ function HomePage({ project }: RouteContext) {
           </p>
           <div className="actions">
             <a href="/about">View route example</a>
+            <a href="/posts/getting-started">Dynamic route</a>
             <Counter initial={1} />
             <code>{project.kernel.plan.project}</code>
           </div>

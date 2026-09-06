@@ -31,6 +31,15 @@ dev.js is an InnovateX CS lab experiment. The roadmap is intentionally practical
 - Add JSX/TSX support through `jsx-runtime`.
 - Integrate component routes with the dev server and static build.
 
+## Done: Production Platform Features
+
+- Dynamic route params (`/posts/[slug]`) with `staticPaths` prerendering.
+- Static asset serving from `public/`.
+- Production client bundles in `dist/devjs/assets`.
+- Client router (`Link`, `RouterProvider`, `useRouter`).
+- Error boundaries and `@devjs/ui/testing` utilities.
+- `devjs init` project scaffolding.
+
 ## Next: Better Developer Experience
 
 - Add clearer error pages for config and route failures.

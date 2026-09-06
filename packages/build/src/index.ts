@@ -1,8 +1,13 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { formatDiagnostic, hasDiagnosticErrors, loadProject } from "@devjs/project";
-import { discoverRoutes, isRouteModule } from "@devjs/router";
-import { loadRouteModule, renderDocument } from "@devjs/server";
+import { discoverRoutes, hasClientComponent, isRouteModule, matchPathPattern } from "@devjs/router";
+import {
+  bundleRouteClient,
+  defaultPublicDirectory,
+  loadRouteModule,
+  renderDocument,
+} from "@devjs/server";
 import { resolveRenderOutput } from "@devjs/ui";
 
 export type BuildOptions = Readonly<{
@@ -27,6 +32,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   const project = await loadProject({ cwd: options.cwd, mode: "production" });
   const manifest = await discoverRoutes(project.root);
   const outDir = options.outDir ?? join(project.root, "dist", "devjs");
+  const assetsDir = join(outDir, "assets");
   const diagnostics = project.diagnostics.map(formatDiagnostic);
 
   if (hasDiagnosticErrors(project.diagnostics)) {
@@ -35,6 +41,8 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
 
   await rm(outDir, { force: true, recursive: true });
   await mkdir(outDir, { recursive: true });
+  await mkdir(assetsDir, { recursive: true });
+  await copyPublicAssets(defaultPublicDirectory(project.root), outDir);
 
   const outputs: BuildRouteOutput[] = [];
 
@@ -45,31 +53,37 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
       throw new Error(`Route module ${route.filePath} must export render().`);
     }
 
-    const html = renderDocument({
-      title: project.kernel.plan.project,
-      body: resolveRenderOutput(
-        await module.render({
-          project,
-          params: {},
-          url: new URL(route.path, "https://devjs.local"),
-        }),
-      ),
-      diagnostics,
-    });
-    const outputPath = join(
-      outDir,
-      route.path === "/" ? "index.html" : `${route.path.slice(1)}.html`,
-    );
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, html);
+    const paths = await resolveBuildPaths(route, module);
+    const clientAsset = hasClientComponent(module)
+      ? await writeClientBundle(route, assetsDir)
+      : undefined;
 
-    outputs.push(
-      Object.freeze({
-        path: route.path,
-        filePath: route.filePath,
-        outputPath,
-      }),
-    );
+    for (const buildPath of paths) {
+      const params = matchPathPattern(route.path, buildPath) ?? {};
+      const html = renderDocument({
+        title: project.kernel.plan.project,
+        body: resolveRenderOutput(
+          await module.render({
+            project,
+            params,
+            url: new URL(buildPath, "https://devjs.local"),
+          }),
+        ),
+        diagnostics,
+        ...(clientAsset ? { clientScript: `import "${clientAsset}";` } : {}),
+      });
+      const outputPath = routeOutputPath(outDir, buildPath);
+      await mkdir(dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, html);
+
+      outputs.push(
+        Object.freeze({
+          path: buildPath,
+          filePath: route.filePath,
+          outputPath,
+        }),
+      );
+    }
   }
 
   await writeFile(
@@ -91,6 +105,60 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
     routes: Object.freeze(outputs),
     diagnostics: Object.freeze(diagnostics),
   });
+}
+
+async function resolveBuildPaths(
+  route: { path: string; dynamic: boolean },
+  module: { staticPaths?: () => readonly string[] | Promise<readonly string[]> },
+): Promise<readonly string[]> {
+  if (!route.dynamic) {
+    return [route.path];
+  }
+
+  if (typeof module.staticPaths !== "function") {
+    return [];
+  }
+
+  const values = await module.staticPaths();
+  return values.map((value) => {
+    const pattern = route.path;
+    const key = pattern.slice(pattern.lastIndexOf(":") + 1);
+    return pattern.replace(`:${key}`, encodeURIComponent(value));
+  });
+}
+
+async function writeClientBundle(
+  route: { path: string; filePath: string },
+  assetsDir: string,
+): Promise<string> {
+  const assetName = routeClientAssetName(route.path);
+  const bundle = await bundleRouteClient(route.filePath);
+  await writeFile(join(assetsDir, assetName), bundle);
+  return `/assets/${assetName}`;
+}
+
+function routeClientAssetName(routePath: string): string {
+  const normalized = routePath === "/" ? "index" : routePath.slice(1).replaceAll("/", "-");
+  return `client-${normalized}.js`;
+}
+
+function routeOutputPath(outDir: string, routePath: string): string {
+  if (routePath === "/") {
+    return join(outDir, "index.html");
+  }
+
+  return join(outDir, `${routePath.slice(1)}.html`);
+}
+
+async function copyPublicAssets(publicDir: string, outDir: string): Promise<void> {
+  try {
+    const entries = await readdir(publicDir, { withFileTypes: true });
+    for (const entry of entries) {
+      await cp(join(publicDir, entry.name), join(outDir, entry.name), { recursive: true });
+    }
+  } catch {
+    // Optional public directory.
+  }
 }
 
 export function formatBuildSummary(result: BuildResult): string {

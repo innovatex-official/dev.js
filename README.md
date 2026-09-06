@@ -14,6 +14,11 @@ This project was built for exploration and learning. It includes a full-stack pl
 - Filesystem routes render pages from `app/routes` using `@devjs/ui` components.
 - JSX/TSX route modules with `useState`, `useEffect`, and other hooks.
 - Server-side rendering via `renderToString` and client hydration for interactive routes.
+- Dynamic route params (`/posts/[slug]`) with `staticPaths` for production builds.
+- Static asset serving from `public/` and production asset bundling.
+- Client router (`Link`, `RouterProvider`) and error boundaries.
+- `devjs init` for scaffolding new apps.
+- Testing utilities via `@devjs/ui/testing`.
 - The `hello-devjs` starter proves the end-to-end flow.
 
 ## Project Scope

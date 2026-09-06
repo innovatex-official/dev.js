@@ -1,8 +1,8 @@
 import { watch } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   formatDiagnostic,
@@ -96,6 +96,10 @@ export async function startDevServer(options: DevServerOptions): Promise<DevServ
       return;
     }
 
+    if (await tryServePublicAsset(response, project.root, url.pathname)) {
+      return;
+    }
+
     await renderRequest(response, project, manifest, url);
   });
 
@@ -160,9 +164,9 @@ async function renderRequest(
     return;
   }
 
-  const route = matchRoute(manifest, url.pathname);
+  const matched = matchRoute(manifest, url.pathname);
 
-  if (!route) {
+  if (!matched) {
     sendHtml(
       response,
       404,
@@ -176,20 +180,20 @@ async function renderRequest(
   }
 
   try {
-    const module = (await loadRouteModule(route.filePath)) as unknown;
+    const module = (await loadRouteModule(matched.route.filePath)) as unknown;
 
     if (!isRouteModule(module)) {
       sendHtml(
         response,
         500,
-        renderRouteError(route.filePath, "Route module must export render()."),
+        renderRouteError(matched.route.filePath, "Route module must export render()."),
       );
       return;
     }
 
-    const body = resolveRenderOutput(await module.render({ project, params: {}, url }));
+    const body = resolveRenderOutput(await module.render({ project, params: matched.params, url }));
     const clientScript = hasClientComponent(module)
-      ? `import "${routeClientPath(route.path)}";`
+      ? `import "${routeClientPath(matched.route.path)}";`
       : undefined;
 
     sendHtml(
@@ -207,7 +211,7 @@ async function renderRequest(
       response,
       500,
       renderRouteError(
-        route.filePath,
+        matched.route.filePath,
         error instanceof Error ? (error.stack ?? error.message) : String(error),
       ),
     );
@@ -321,10 +325,10 @@ async function readUiClientBundle(): Promise<string> {
   return readFile(uiClientEntry, "utf8");
 }
 
-async function bundleRouteClient(routeFilePath: string): Promise<string> {
+export async function bundleRouteClient(routeFilePath: string): Promise<string> {
   const entry = `
     import { hydrateApp } from "@devjs/ui/client";
-    import { component } from ${JSON.stringify(pathToFileURL(routeFilePath).href)};
+    import { component } from ${JSON.stringify(routeFilePath)};
     const root = document.getElementById("root");
     if (!root) {
       throw new Error("Missing #root container for dev.js hydration.");
@@ -343,9 +347,12 @@ async function bundleRouteClient(routeFilePath: string): Promise<string> {
     format: "esm",
     platform: "browser",
     target: "es2020",
+    jsx: "automatic",
+    jsxImportSource: "@devjs/ui",
     alias: {
       "@devjs/ui/client": uiClientEntry,
       "@devjs/ui": uiEntry,
+      "@devjs/ui/jsx-runtime": uiJsxEntry,
     },
   });
 
@@ -357,7 +364,56 @@ async function bundleRouteClient(routeFilePath: string): Promise<string> {
   return output;
 }
 
-function routeClientPath(routePath: string): string {
+export function routeClientPath(routePath: string): string {
   const normalized = routePath === "/" ? "index" : routePath.slice(1).replaceAll("/", "-");
   return `/__devjs/client/${normalized}.js`;
+}
+
+const mimeTypes: Readonly<Record<string, string>> = {
+  ".css": "text/css; charset=utf-8",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+async function tryServePublicAsset(
+  response: ServerResponse,
+  projectRoot: string,
+  pathname: string,
+): Promise<boolean> {
+  if (pathname.startsWith("/__devjs/")) {
+    return false;
+  }
+
+  const relativePath = pathname === "/" ? "" : pathname.slice(1);
+  const filePath = join(defaultPublicDirectory(projectRoot), relativePath);
+  const publicRoot = defaultPublicDirectory(projectRoot);
+  if (!filePath.startsWith(publicRoot)) {
+    return false;
+  }
+
+  try {
+    const fileStat = await stat(filePath);
+    if (!fileStat.isFile()) {
+      return false;
+    }
+
+    const content = await readFile(filePath);
+    const mimeType = mimeTypes[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+    response.writeHead(200, { "Content-Type": mimeType });
+    response.end(content);
+    return true;
+  } catch {
+    return false;
+  }
 }

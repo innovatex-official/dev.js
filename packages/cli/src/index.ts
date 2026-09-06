@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { buildProject, formatBuildSummary } from "@devjs/build";
 import {
   formatDiagnostic,
@@ -34,6 +36,8 @@ export async function runCli(
       return runBuild(runtime);
     case "dev":
       return runDev(argv, runtime);
+    case "init":
+      return runInit(argv, runtime);
     case "help":
     case "--help":
     case "-h":
@@ -74,6 +78,21 @@ async function runBuild(runtime: CliRuntime): Promise<CliResult> {
   }
 }
 
+async function runInit(argv: readonly string[], runtime: CliRuntime): Promise<CliResult> {
+  const name = argv[3] ?? "my-devjs-app";
+
+  try {
+    const root = await initProject({ cwd: runtime.cwd, name });
+    return ok(`Created dev.js app at ${root}`);
+  } catch (error) {
+    return {
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 async function runDev(argv: readonly string[], runtime: CliRuntime): Promise<CliResult> {
   const port = parsePort(argv) ?? 3000;
   const server = await startDevServer({
@@ -96,6 +115,7 @@ Usage:
   devjs dev             Start the development server
   devjs dev --port 4000 Start the development server on a custom port
   devjs build           Build production HTML output
+  devjs init [name]     Create a new dev.js application
   devjs doctor          Validate the current project environment
   devjs doctor --json   Print diagnostics as JSON
   devjs version         Print the CLI version
@@ -144,6 +164,97 @@ function parsePort(argv: readonly string[]): number | undefined {
 
   const port = Number.parseInt(raw, 10);
   return Number.isInteger(port) && port > 0 ? port : undefined;
+}
+
+async function initProject(options: { cwd: string; name: string }): Promise<string> {
+  const root = join(options.cwd, options.name);
+  await mkdir(join(root, "app", "routes"), { recursive: true });
+  await mkdir(join(root, "app", "components"), { recursive: true });
+  await mkdir(join(root, "public"), { recursive: true });
+
+  await writeFile(
+    join(root, "dev.config.ts"),
+    `import { defineConfig } from "@devjs/config";
+
+export default defineConfig({
+  name: "${options.name}",
+});
+`,
+  );
+
+  await writeFile(
+    join(root, "package.json"),
+    JSON.stringify(
+      {
+        name: options.name,
+        version: "0.0.0",
+        private: true,
+        type: "module",
+        scripts: {
+          build: "node ../../packages/cli/dist/index.js build",
+          dev: "node ../../packages/cli/dist/index.js dev",
+          doctor: "node ../../packages/cli/dist/index.js doctor",
+          typecheck: "tsc --noEmit",
+        },
+        dependencies: {
+          "@devjs/cli": "workspace:*",
+          "@devjs/config": "workspace:*",
+          "@devjs/ui": "workspace:*",
+        },
+        devDependencies: {
+          "@types/node": "latest",
+          typescript: "latest",
+        },
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeFile(
+    join(root, "tsconfig.json"),
+    JSON.stringify(
+      {
+        extends: "../../tsconfig.base.json",
+        compilerOptions: {
+          noEmit: true,
+          jsx: "react-jsx",
+          jsxImportSource: "@devjs/ui",
+          types: ["node"],
+        },
+        include: ["app/**/*.ts", "app/**/*.tsx", "dev.config.ts"],
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeFile(
+    join(root, "app", "routes", "index.tsx"),
+    `import type { RouteContext } from "@devjs/router";
+import { renderToString } from "@devjs/ui";
+
+function HomePage({ project }: RouteContext) {
+  return (
+    <main style={{ padding: "48px", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <h1>Welcome to {project.kernel.plan.project}</h1>
+      <p>Your dev.js app is ready.</p>
+      <a href="/about">About</a>
+    </main>
+  );
+}
+
+export const component = HomePage;
+
+export function render(context: RouteContext): string {
+  return renderToString(<HomePage {...context} />);
+}
+`,
+  );
+
+  await writeFile(join(root, "public", "robots.txt"), "User-agent: *\nAllow: /\n");
+
+  return root;
 }
 
 async function main(): Promise<void> {

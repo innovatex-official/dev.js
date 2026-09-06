@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderHelp, runCli } from "./index.js";
@@ -70,12 +71,25 @@ describe("runCli", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("Unknown command: unknown");
   });
+
+  it("scaffolds a new project", async () => {
+    const target = resolve(repoRoot, `tmp-init-${crypto.randomUUID()}`);
+    const result = await runCli(["node", "devjs", "init", "demo-app"], {
+      cwd: target,
+      env: { NODE_ENV: "development" },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("demo-app");
+    await rm(resolve(target, "demo-app"), { force: true, recursive: true });
+    await rm(target, { force: true, recursive: true });
+  });
 });
 
 describe("renderHelp", () => {
   it("documents supported commands", () => {
     expect(renderHelp()).toContain("devjs doctor");
     expect(renderHelp()).toContain("devjs build");
-    expect(renderHelp()).toContain("devjs dev");
+    expect(renderHelp()).toContain("devjs init");
   });
 });

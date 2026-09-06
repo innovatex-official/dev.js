@@ -1,5 +1,6 @@
 import { h } from "./h.js";
 import { createInstance, hydrateDom, mount, patch, setEventRoot } from "./reconciler.js";
+import { Link, RouterProvider, usePathname, useRouter } from "./router.js";
 import {
   type ComponentInstance,
   type DevComponent,
@@ -73,3 +74,5 @@ export function mountApp(component: DevComponent, container: HTMLElement): void 
 export function hydrateApp(component: DevComponent, container: HTMLElement): void {
   hydrate(h(component, {}), container);
 }
+
+export { Link, RouterProvider, usePathname, useRouter };
